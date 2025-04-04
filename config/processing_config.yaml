@@ -1,0 +1,42 @@
+one_hot_encoding:
+  names:
+    - ca
+    - cp
+    - dataset
+    - exang
+    - fbs
+    - restecg
+    - sex
+    - thal
+
+power_transform:
+  names:
+    - dead_cells_related
+    - ecg_related
+    - exercise_related
+    - food_related
+    - framingham_score
+    - oldpeak
+    - trestbps
+
+standard_scale:
+  names:
+    - age
+    - age_squared
+    - chol
+    - dead_cells_related
+    - ecg_related
+    - exercise_related
+    - food_related
+    - framingham_score
+    - oldpeak
+    - pain_related
+    - slope
+    - thalach
+    - trestbps
+
+min_max_scale:
+  names: []
+
+log_transform:
+  names: []

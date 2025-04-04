@@ -1,0 +1,149 @@
+# Missing values mapping
+missing_values:
+  markers:
+    - "?"
+  replacement: "NaN"
+
+# Data sources file paths and label names
+data_sources:
+  cleveland:
+    file_path: "data/raw/processed.cleveland.data"
+    dataset_value: 1
+    dataset_name: "cleveland"
+  hungarian:
+    file_path: "data/raw/processed.hungarian.data" 
+    dataset_value: 2
+    dataset_name: "hungarian"
+  va:
+    file_path: "data/raw/processed.va.data"
+    dataset_value: 3
+    dataset_name: "va"
+  switzerland:
+    file_path: "data/raw/processed.switzerland.data"
+    dataset_value: 4
+    dataset_name: "switzerland"
+
+# Feature definitions, mappings between categories, and imputation strategies
+columns:
+  age:
+    name: "Age"
+    description: "Patient's age in years"
+    type: "numerical"
+    imputation: "median"
+  
+  sex:
+    name: "Sex"
+    description: "Patient's sex"
+    type: "categorical"
+    mapping:
+      0: "Female"
+      1: "Male"
+    imputation: "mode"
+  
+  cp:
+    name: "Chest Pain Type"
+    description: "Type of chest pain experienced"
+    type: "categorical"
+    mapping:
+      1: "typical angina"
+      2: "atypical angina"
+      3: "non-anginal"
+      4: "asymptomatic"
+    imputation: "mode"
+  
+  trestbps:
+    name: "Resting Blood Pressure"
+    description: "Resting blood pressure in mm Hg"
+    type: "numerical"
+    imputation: "median"
+  
+  chol:
+    name: "Serum Cholesterol"
+    description: "Serum cholesterol level in mg/dl"
+    type: "numerical"
+    imputation: "median"
+  
+  fbs:
+    name: "Fasting Blood Sugar"
+    description: "Fasting blood sugar level > 120 mg/dl (status)"
+    type: "categorical"
+    mapping:
+      0: "≤ 120 mg/dl"
+      1: "> 120 mg/dl"
+    imputation: "mode"
+  
+  restecg:
+    name: "Resting ECG"
+    description: "Resting electrocardiographic results"
+    type: "categorical"
+    mapping:
+      0: "normal"
+      1: "st-t abnormality"
+      2: "lv hypertrophy"
+    imputation: "mode"
+  
+  thalach:
+    name: "Maximum Heart Rate"
+    description: "Maximum heart rate achieved during exercise"
+    type: "numerical"
+    imputation: "median"
+  
+  exang:
+    name: "Exercise Induced Angina"
+    description: "Exercise induced angina"
+    type: "categorical"
+    mapping:
+      0: "No"
+      1: "Yes"
+    imputation: "mode"
+  
+  oldpeak:
+    name: "ST Depression Induced by Exercise"
+    description: "ST depression induced by exercise relative to rest in millimeters, measured on Electrocardiographic Results"
+    type: "numerical"
+    imputation: "median"
+  
+  slope:
+    name: "Slope"
+    description: "The slope of the peak exercise ST segment"
+    type: "categorical"
+    mapping:
+      1: "upsloping"
+      2: "flat"
+      3: "downsloping"
+    imputation: "mode"
+  
+  ca:
+    name: "Major Vessels"
+    description: "Number of major vessels colored by fluoroscopy"
+    type: "numerical"
+    imputation: "mode"
+  
+  thal:
+    name: "Thallium Stress Test"
+    description: "Thallium stress result, categorized by the outcome of the blood flow to the heart"
+    type: "categorical"
+    original_mapping:
+      3: "normal"
+      6: "fixed defect"
+      7: "reversible defect"
+    new_mapping:
+      0: "normal"
+      1: "reversible defect"
+      2: "fixed defect"
+    original_to_new:
+      3: 0
+      6: 2
+      7: 1
+    imputation: "mode"
+  
+  target:
+    name: "Heart Disease"
+    description: "Diagnosis of heart disease"
+    type: "categorical"
+    mapping:
+      0: "No heart disease"
+      1: "Heart disease level 1"
+      2: "Heart disease level 2"
+      3: "Heart disease level 3"
+      4: "Heart disease level 4"
