@@ -71,7 +71,8 @@ class Processor:
         return df_all
 
     def clean_data(self, df):
-        """Handling missing values and type conversions."""
+        """Handling missing values, outliers and type conversions."""
+        
 
         if df is None or df.empty:
             logger.error("No data to clean")
@@ -115,6 +116,15 @@ class Processor:
                     f"  {feature}: {count} missing values ({count/len(df_clean):.2%})")
         else:
             logger.info("No missing values found in the dataset")
+
+        # Changing outliers with non medical sence to NaN
+        cols_with_zero_invalid = ['chol', 'trestbps']
+        for col in cols_with_zero_invalid:
+            num_zeros = (df_clean[col] == 0).sum()
+            if num_zeros > 0:
+                logger.info(f"{col}: Changing {num_zeros} zeros to NaN")
+                df_clean.loc[df_clean[col] == 0, col] = np.nan
+
 
         return df_clean
 
