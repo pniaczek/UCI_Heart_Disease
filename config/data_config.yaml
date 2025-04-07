@@ -29,7 +29,7 @@ columns:
     name: "Age"
     description: "Patient's age in years"
     type: "numerical"
-    imputation: "median"
+    imputation: "mice"
   
   sex:
     name: "Sex"
@@ -49,19 +49,19 @@ columns:
       2: "atypical angina"
       3: "non-anginal"
       4: "asymptomatic"
-    imputation: "mode"
+    imputation: "mice"
   
   trestbps:
     name: "Resting Blood Pressure"
     description: "Resting blood pressure in mm Hg"
     type: "numerical"
-    imputation: "median"
+    imputation: "mice"
   
   chol:
     name: "Serum Cholesterol"
     description: "Serum cholesterol level in mg/dl"
     type: "numerical"
-    imputation: "median"
+    imputation: "mice"
   
   fbs:
     name: "Fasting Blood Sugar"
@@ -80,13 +80,13 @@ columns:
       0: "normal"
       1: "st-t abnormality"
       2: "lv hypertrophy"
-    imputation: "mode"
+    imputation: "mice"
   
   thalach:
     name: "Maximum Heart Rate"
     description: "Maximum heart rate achieved during exercise"
     type: "numerical"
-    imputation: "median"
+    imputation: "mice"
   
   exang:
     name: "Exercise Induced Angina"
@@ -101,7 +101,7 @@ columns:
     name: "ST Depression Induced by Exercise"
     description: "ST depression induced by exercise relative to rest in millimeters, measured on Electrocardiographic Results"
     type: "numerical"
-    imputation: "median"
+    imputation: "mice"
   
   slope:
     name: "Slope"
@@ -111,13 +111,13 @@ columns:
       1: "upsloping"
       2: "flat"
       3: "downsloping"
-    imputation: "mode"
+    imputation: "mice"
   
   ca:
     name: "Major Vessels"
     description: "Number of major vessels colored by fluoroscopy"
     type: "numerical"
-    imputation: "mode"
+    imputation: "mice"
   
   thal:
     name: "Thallium Stress Test"
@@ -135,7 +135,7 @@ columns:
       3: 0
       6: 2
       7: 1
-    imputation: "mode"
+    imputation: "mice"
   
   target:
     name: "Heart Disease"

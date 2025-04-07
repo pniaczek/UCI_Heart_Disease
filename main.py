@@ -2,7 +2,8 @@ from src.pipelines.pipelines import (
     missing_data_visualization_pipeline,
     processing_pipeline,
     transformation_pipeline,
-    dim_reduction_pipeline
+    dim_reduction_pipeline,
+    training_pipeline
 )
 from loggers import logger_main as logger
 
@@ -27,6 +28,13 @@ def main():
     if df_dim_reduced is None:
         logger.error("Dimensionality reduction pipeline failed.")
         return
+      
+    svm_model, svm_metrics = training_pipeline(
+        df_dim_reduced, "svm")
+    if svm_model is None and svm_metrics is None:
+        logger.error("Training pipeline failed.")
+        return
+  
 
     logger.info("Analysis finished.")
 

@@ -8,6 +8,7 @@ from src.visualization.missing_values import plot_missing_values_bar_plot, plot_
 from src.visualization.distributions import plot_all_distributions
 from src.visualization.correlation import plot_data_correlation
 from src.visualization.dimensionality_reduction import plot_pca_variance, plot_pca_feature_loadings, plot_pca_scatter
+from src.train.trainer import Trainer
 from loggers import logger_main as logger
 from loggers import logger_pipelines as logger_pipe
 
@@ -16,6 +17,7 @@ CONFIG_PATH = 'config/data_config.yaml'
 PROCESSED_DATA_PATH = 'data/processed'
 EDA_PATH = 'plots/01_basic_eda'
 DIM_REDUCTION_PATH = 'plots/02_dimensionality_reduction'
+TRAINING_DATA_CONFIG = 'config/training_config.yaml'
 
 
 def missing_data_visualization_pipeline(source_key=None):
@@ -221,3 +223,31 @@ def dim_reduction_pipeline(df_transformed, source_key=None, target_col='target',
     logger_pipe.info(
         f"Dimensionality reduction pipeline finished.")
     return df_dim_reduced
+
+
+def training_pipeline(df_dim_reduced, model_name='svm', source_key=None, target_col='target'):
+    source_str = 'uci' if source_key is None else source_key
+
+    logger_pipe.info(f"Starting training pipeline for {source_str}...")
+
+    if df_dim_reduced is None or df_dim_reduced.empty:
+        logger_pipe.error("Input data for training is empty.")
+        return None, None
+
+    try:
+        if target_col not in df_dim_reduced.columns:
+            logger_pipe.error(f"Target column '{target_col}' not found in the data.")
+            return None, None
+
+        X = df_dim_reduced.drop(columns=[target_col])
+        y = df_dim_reduced[target_col]
+
+        trainer = Trainer(X, y, TRAINING_DATA_CONFIG)
+        model, metrics = trainer.train(model_name)
+
+        logger_pipe.info(f"Model training completed with metrics: {metrics}")
+        return model, metrics
+
+    except Exception as e:
+        logger_pipe.error(f"Error during training pipeline: {e}")
+        return None, None

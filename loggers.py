@@ -11,3 +11,4 @@ logger_imputer = logging.getLogger("Imputer")
 logger_transformer = logging.getLogger("Transformer")  # Added
 logger_pipelines = logging.getLogger("Pipelines")  # Added
 logger_visualizations = logging.getLogger("Visualizations")
+logger_trainer = logging.getLogger("Training")

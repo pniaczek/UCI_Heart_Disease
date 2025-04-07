@@ -1,0 +1,15 @@
+# Data split ratios
+train_ratio: 0.8
+val_ratio: 0.1
+test_ratio: 0.1
+
+
+# Training parameters for each model
+models:
+  svm:
+    C: 1.6
+    kernel: "rbf"
+    gamma: "scale"
+    class_weight: "balanced"
+    probability: True
+    random_state: 42

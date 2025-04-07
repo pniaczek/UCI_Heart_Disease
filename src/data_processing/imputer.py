@@ -1,5 +1,8 @@
+import pandas as pd
 from sklearn.impute import KNNImputer
 from loggers import logger_imputer as logger
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
 
 
 class Imputer:
@@ -9,7 +12,8 @@ class Imputer:
             'mean': self._mean_imputation,
             'median': self._median_imputation,
             'mode': self._mode_imputation,
-            'knn': self._knn_imputation
+            'knn': self._knn_imputation,
+        
         }
 
     def impute(self, df, column, strategy=None):
@@ -20,6 +24,13 @@ class Imputer:
         if strategy is None:
             column_config = self.config['columns'].get(column, {})
             strategy = column_config.get('imputation', 'mean')
+        
+        if strategy =="mice":
+            logger.warning(
+                f"Strategy 'mice' is only available as a global imputation method in 'impute_all'."
+                f" Skipping column '{column}'..."
+        )
+            return df
 
         if strategy not in self.strategies:
             logger.warning(
@@ -42,7 +53,11 @@ class Imputer:
                 f"Found {len(missing_cols)} columns with missing values: {missing_cols}")
 
             for col in missing_cols:
-                df_copy = self.impute(df_copy, col)
+                strategy = self.config['columns'].get(col, {}).get('imputation', 'mean')
+                if strategy != 'mice':
+                    df_copy = self.impute(df_copy, col, strategy)
+            if df_copy.isna().sum().sum() > 0:
+                df_copy = self._mice_imputation_global(df_copy)
         else:
             logger.info("No missing values found in the dataset")
 
@@ -93,3 +108,34 @@ class Imputer:
         )
 
         return df_copy
+    
+    def _mice_imputation_global(self, df, max_iter=10):
+        """Perform global MICE imputation on the entire DataFrame ."""
+        df_copy = df.copy()
+        logger.info("Applying global MICE (Iterative Imputer) to all numerical columns with missing values...")
+        imputer = IterativeImputer(max_iter=max_iter, random_state=0)
+        imputed_data = imputer.fit_transform(df_copy)
+        df_imputed = pd.DataFrame(imputed_data, columns=df.columns, index=df.index)
+        logger.info("Global MICE imputing completed. Rounding all values to nearest integers...")
+        df_imputed = df_imputed.round()
+
+        # Clip categorical columns to allowed ranges
+        for col in df_imputed.columns:
+            col_config = self.config['columns'].get(col, {})
+            col_type = col_config.get('type')
+
+            if col_type == 'categorical':
+                mapping = col_config.get('mapping', {})
+                if mapping:
+                    allowed_vals = list(mapping.keys())
+                    min_val, max_val = min(allowed_vals), max(allowed_vals)
+                    df_imputed[col] = df_imputed[col].clip(lower=min_val, upper=max_val)
+                    logger.info(f"Clipped values in categorical column '{col}' to range [{min_val}, {max_val}]")
+
+        return df_imputed
+    
+    
+
+
+
+
