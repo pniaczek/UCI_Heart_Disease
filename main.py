@@ -4,13 +4,13 @@ from src.data_processing.data_splitting import split_data
 from src.data_processing.imputer import Imputer
 from src.data_processing.data_transformation import DataTransformer
 from src.data_processing.pca_transformer import PCATransformer
-from src.train.trainer import Trainer
+from src.models.model_tuner import ModelTunerEvaluator
 from loggers import logger_main as logger
 import os
 from src.visualization.missing_values import plot_missing_values_bar_plot, plot_missing_values_matrix_plot, plot_missing_values_heatmap
 from src.visualization.distributions import plot_feature_distribution, plot_feature_distribution_by_target
 from src.visualization.correlation import plot_correlation_matrix, plot_correlation_coefficients
-from sklearn.metrics import accuracy_score, recall_score, f1_score
+from src.visualization.evaluation import plot_metric_comparison, plot_confusion_matrix, plot_feature_importance
 
 
 # Config paths
@@ -24,6 +24,7 @@ PROCESSED_DATA_PATH = 'data/processed'
 # Visualization paths
 EDA_PATH = 'plots/01_basic_eda'
 DIM_REDUCTION_PATH = 'plots/02_dimensionality_reduction'
+EVALUATION_PLOT_PATH = 'plots/03_evaluation'
 
 
 def main(source_key=None, feature_engineering=True, run_visualizations=False):
@@ -34,7 +35,7 @@ def main(source_key=None, feature_engineering=True, run_visualizations=False):
     logger.info("(I) Loading and cleaning data...")
     processor = Processor(DATA_CONFIG_PATH, PROCESSED_DATA_PATH)
 
-    # Without imputation here
+    # Without imputation - imputation in (IV) step
     df_cleaned = processor.process_data(
         source_key=source_key,
         impute=False,
@@ -179,37 +180,69 @@ def main(source_key=None, feature_engineering=True, run_visualizations=False):
 
     logger.info("PCA applied to train, validation, and test datasets.")
 
-    # (VII) Model training
-    logger.info("(VII) Model training...")
-    trainer = Trainer(
+    # (VII) Model tuning and evaluation
+    logger.info("(VII) Model tuning and evaluation...")
+    tuner_evaluator = ModelTunerEvaluator(
         X_train=X_train_pca, y_train=y_train_pca,
         X_val=X_val_pca, y_val=y_val_pca,
         X_test=X_test_pca, y_test=y_test_pca,
-        training_config_path=TRAINING_CONFIG_PATH
+        n_trials=5
     )
 
-    # Training SVM model
-    svm_model, svm_metrics = trainer.train("svm")
-    if svm_model is None or svm_metrics is None:
-        logger.error("Training pipeline failed for SVM.")
-        return
+    models_to_run = ['svm', 'random_forest', 'lightgbm']
+    results = {}
 
-    logger.info(f"SVM training complete. Validation metrics: {svm_metrics}")
+    for model_name in models_to_run:
+        model, best_params, metrics = tuner_evaluator.tune_and_evaluate(
+            model_name)
+        if model is None:
+            logger.error(f"Tuning and evaluation failed for {model_name}.")
+            continue
+        results[model_name] = {
+            'model': model,
+            'best_params': best_params,
+            'metrics': metrics
+        }
 
-    # Model evaluation
-    logger.info("Evaluating SVM model on test dataset...")
-    y_test_pred = svm_model.predict(X_test_pca)
-    test_acc = accuracy_score(y_test_pca, y_test_pred)
-    test_rec = recall_score(y_test_pca, y_test_pred,
-                            average='weighted', zero_division=0)
-    test_f1 = f1_score(y_test_pca, y_test_pred,
-                       average='weighted', zero_division=0)
-    logger.info(f"Test Accuracy: {test_acc:.4f}")
-    logger.info(f"Test Recall: {test_rec:.4f}")
-    logger.info(f"Test F1 Score: {test_f1:.4f}")
+    logger.info("Completed tuning and evaluation for all specified models.")
+
+    # (VIII) Tuned model visualization
+    if run_visualizations and results:
+        logger.info("(VIII) Generating tuned model metrics visualizations...")
+        os.makedirs(EVALUATION_PLOT_PATH, exist_ok=True)
+
+        # Plot metric comparisons
+        plot_metric_comparison(
+            results, EVALUATION_PLOT_PATH, source_str=f'{source_str}_')
+
+        class_names = ['No Disease', 'Disease']
+        feature_names = X_test_pca.columns.tolist()
+
+        for model_name, data in results.items():
+            plot_confusion_matrix(
+                model=data['model'],
+                X_test=X_test_pca,
+                y_test=y_test_pca,
+                model_name=model_name,
+                class_names=class_names,
+                output_dir=EVALUATION_PLOT_PATH,
+                source_str=f'{source_str}_'
+            )
+
+            # Feature importances for ensemble models
+            if model_name in ['random_forest', 'lightgbm']:
+                plot_feature_importance(
+                    model=data['model'],
+                    feature_names=feature_names,
+                    model_name=model_name,
+                    output_dir=EVALUATION_PLOT_PATH,
+                    top_n=5,
+                    source_str=f'{source_str}_'
+                )
+        logger.info("Completed generating evaluation visualizations.")
 
     logger.info("Analysis finished successfully.")
 
 
 if __name__ == "__main__":
-    main(run_visualizations=True)
+    main(run_visualizations=True, feature_engineering=True)

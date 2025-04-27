@@ -100,6 +100,12 @@ class PCATransformer:
                 f'PC{i+1}' for i in range(self.n_components_optimal)]
             df_pca = pd.DataFrame(X_pca, columns=pca_columns, index=X.index)
 
+            if y is not None:
+                y_aligned = y.loc[X.index]
+                df_pca = pd.concat([df_pca, y_aligned], axis=1)
+                logger_pipe.info(
+                    f"Target variable '{y.name}' added to PCA results.")
+
             logger_pipe.info(
                 f"PCA transformation applied. Output shape: {df_pca.shape}")
 

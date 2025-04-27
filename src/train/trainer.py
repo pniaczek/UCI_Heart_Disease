@@ -14,7 +14,6 @@ class Trainer:
         self.X_test = X_test
         self.y_test = y_test
         self.config = self._load_config(training_config_path)
-        # Data is already prepared and split
         self.learning_curve = {
             'accuracy': [],
             'recall': [],
@@ -25,13 +24,10 @@ class Trainer:
         with open(path, 'r') as file:
             return yaml.safe_load(file)
 
-    # _prepare_data method is removed as splitting is done externally
-
     def train(self, model_name: str):
-        # Check if data was loaded correctly during init
         if self.X_train is None or self.y_train is None or self.X_val is None or self.y_val is None:
             logger.error(
-                "Training data is not available. Check the preprocessing steps.")
+                "Training data is not available.")
             return None, None
 
         if model_name not in self.config.get('models', {}):
