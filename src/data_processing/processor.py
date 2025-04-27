@@ -72,7 +72,6 @@ class Processor:
 
     def clean_data(self, df):
         """Handling missing values, outliers and type conversions."""
-        
 
         if df is None or df.empty:
             logger.error("No data to clean")
@@ -117,14 +116,13 @@ class Processor:
         else:
             logger.info("No missing values found in the dataset")
 
-        # Changing outliers with non medical sence to NaN
+        # Changing outliers with non medical sence to nan values
         cols_with_zero_invalid = ['chol', 'trestbps']
         for col in cols_with_zero_invalid:
             num_zeros = (df_clean[col] == 0).sum()
             if num_zeros > 0:
-                logger.info(f"{col}: Changing {num_zeros} zeros to NaN")
+                logger.info(f"{col}: Changing {num_zeros} zeros to nan value")
                 df_clean.loc[df_clean[col] == 0, col] = np.nan
-
 
         return df_clean
 
@@ -141,10 +139,7 @@ class Processor:
         if df_clean is None:
             return None
 
-        if impute:
-            df_processed = self.impute_missing_values(df_clean)
-        else:
-            df_processed = df_clean
+        df_processed = df_clean
 
         if save_csv:
             self.save_to_csv(df_processed, save_csv_source_key)
@@ -193,15 +188,11 @@ class Processor:
                             f"File {source_output_path} already exists."
                         )
 
-    def add_feature_engineering(self, source_key=None, impute=True, save_csv=True, source_str=None):
-
-        df = self.process_data(source_key=source_key, impute=impute,
-                               save_csv=save_csv, save_csv_source_key=source_str)
-
-        if df is None:
+    def add_feature_engineering(self, df_cleaned, save_csv=True, source_str=None):
+        if df_cleaned is None:
             return None
 
-        df_processed = df.copy()
+        df_processed = df_cleaned.copy()
         logger.info("Applying feature engineering transformations...")
 
         df_processed["framingham_score"] = fe.calculate_total_frs(
