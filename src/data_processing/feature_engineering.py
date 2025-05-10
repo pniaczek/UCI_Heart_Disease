@@ -1,8 +1,7 @@
 import numpy as np
 import pandas as pd
 
-# === Framingham Risk Score, based on ATP-III ===
-
+# Framingham Risk Score, based on ATP-III
 # points evaluation
 
 
@@ -86,7 +85,7 @@ def calculate_total_frs(age, sex, chol, trestbps, fbs):
     return total
 
 
-# === Other feature engineering ===
+# Other feature engineering
 
 def calculate_age_squared(age):
     return age**2

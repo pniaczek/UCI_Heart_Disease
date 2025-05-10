@@ -6,3 +6,6 @@ seaborn==0.13.2
 PyYAML==6.0.2
 missingno==0.5.2
 scipy==1.14.1
+optuna
+lightgbm
+joblib

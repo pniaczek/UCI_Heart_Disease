@@ -4,7 +4,7 @@ val_ratio: 0.1
 test_ratio: 0.1
 
 
-# Training parameters for each model
+# Training parameters
 models:
   svm:
     C: 1.6
@@ -12,4 +12,12 @@ models:
     gamma: "scale"
     class_weight: "balanced"
     probability: True
-    random_state: 42
+    random_state: 0
+
+  random_forest:
+    # Optuna tuning
+    placeholder: True
+
+  lightgbm:
+    # Optuna tuning
+    placeholder: True

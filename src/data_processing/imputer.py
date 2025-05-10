@@ -8,119 +8,153 @@ from sklearn.impute import IterativeImputer
 class Imputer:
     def __init__(self, config):
         self.config = config
-        self.strategies = {
-            'mean': self._mean_imputation,
-            'median': self._median_imputation,
-            'mode': self._mode_imputation,
-            'knn': self._knn_imputation,
-        
-        }
+        self.fitted_params = {}
+        self.fitted_imputers = {}
+        self.numeric_cols_knn = None
+        self.numeric_cols_mice = None
+        self.fitted = False
 
-    def impute(self, df, column, strategy=None):
-        """Imputing missing values in a specific column and with a defined strategy."""
-        if df[column].isna().sum() == 0:
-            return df
-
-        if strategy is None:
-            column_config = self.config['columns'].get(column, {})
-            strategy = column_config.get('imputation', 'mean')
-        
-        if strategy =="mice":
-            logger.warning(
-                f"Strategy 'mice' is only available as a global imputation method in 'impute_all'."
-                f" Skipping column '{column}'..."
-        )
-            return df
-
-        if strategy not in self.strategies:
-            logger.warning(
-                f"Unknown imputation strategy '{strategy}' for column '{column}'. Changing to mean strategy instead.")
-            strategy = 'mean'
-
-        logger.info(f"Imputing column '{column}' using '{strategy}' strategy")
-        return self.strategies[strategy](df, column)
-
-    def impute_all(self, df):
-        """Imputing all columns with missing data in the dataframe based on defined strategies."""
+    def fit(self, df):
+        logger.info("Fitting imputer...")
         df_copy = df.copy()
+        self.fitted_params = {}
+        self.fitted_imputers = {}
+        self.numeric_cols_knn = None
+        self.numeric_cols_mice = None
 
-        missing_cols = [
+        cols_to_impute = [
             col for col in df_copy.columns if df_copy[col].isna().sum() > 0
         ]
 
-        if missing_cols:
-            logger.info(
-                f"Found {len(missing_cols)} columns with missing values: {missing_cols}")
+        mice_needed = any(self.config['columns'].get(col, {}).get(
+            'imputation') == 'mice' for col in cols_to_impute)
 
-            for col in missing_cols:
-                strategy = self.config['columns'].get(col, {}).get('imputation', 'mean')
-                if strategy != 'mice':
-                    df_copy = self.impute(df_copy, col, strategy)
-            if df_copy.isna().sum().sum() > 0:
-                df_copy = self._mice_imputation_global(df_copy)
-        else:
-            logger.info("No missing values found in the dataset")
+        if mice_needed:
+            logger.info("Fitting global MICE (Iterative Imputer)...")
+            self.numeric_cols_mice = df_copy.select_dtypes(
+                include=['float64', 'int64']).columns.tolist()
+            if not self.numeric_cols_mice:
+                logger.warning(
+                    "No numeric columns found for MICE imputation. Skipping..")
+            else:
+                mice_imputer = IterativeImputer(max_iter=10, random_state=0)
+                mice_imputer.fit(df_copy[self.numeric_cols_mice])
+                self.fitted_imputers['mice'] = mice_imputer
+                logger.info("Fitted global MICE imputer.")
 
-        return df_copy
+        for col in df_copy.columns:
+            strategy = self.config['columns'].get(
+                col, {}).get('imputation', 'mean')
 
-    def _mean_imputation(self, df, column):
+            if strategy == 'mean':
+                self.fitted_params[col] = df_copy[col].mean()
+                logger.info(
+                    f"Calculated mean for '{col}': {self.fitted_params[col]}")
+
+            elif strategy == 'median':
+                self.fitted_params[col] = df_copy[col].median()
+                logger.info(
+                    f"Calculated median for '{col}': {self.fitted_params[col]}")
+
+            elif strategy == 'mode':
+                mode_val = df_copy[col].mode()
+                self.fitted_params[col] = mode_val[0]
+                logger.info(
+                    f"Calculated mode for '{col}': {self.fitted_params[col]}")
+
+            elif strategy == 'knn':
+                if self.numeric_cols_knn is None:
+                    self.numeric_cols_knn = df_copy.select_dtypes(
+                        include=['float64', 'int64']).columns.tolist()
+
+                if 'knn' not in self.fitted_imputers:
+                    logger.info("Fitting KNN imputer...")
+                    knn_imputer = KNNImputer(n_neighbors=5)
+                    knn_imputer.fit(df_copy[self.numeric_cols_knn])
+                    self.fitted_imputers['knn'] = knn_imputer
+                    logger.info("Fitted KNN imputer.")
+            else:
+                logger.warning(
+                    f"Unknown imputation method '{strategy}' for '{col}' feature. Calculating mean.")
+                self.fitted_params[col] = df_copy[col].mean()
+
+        self.fitted = True
+        logger.info("Imputer fitting complete.")
+        return self
+
+    def transform(self, df):
+        logger.info("Transforming data using imputer that was fit...")
         df_copy = df.copy()
-        mean_value = df_copy[column].mean()
-        df_copy[column] = df_copy[column].fillna(mean_value)
-        logger.info(f"Imputed '{column}' with mean value: {mean_value}")
-        return df_copy
 
-    def _median_imputation(self, df, column):
-        df_copy = df.copy()
-        median_value = df_copy[column].median()
-        df_copy[column] = df_copy[column].fillna(median_value)
-        logger.info(f"Imputed '{column}' with median value: {median_value}")
-        return df_copy
+        mice_applied = False
+        if 'mice' in self.fitted_imputers:
+            logger.info("Global MICE transformation...")
+            cols_present = [
+                col for col in self.numeric_cols_mice if col in df_copy.columns]
 
-    def _mode_imputation(self, df, column):
-        df_copy = df.copy()
-        mode_value = df_copy[column].mode()[0]
-        df_copy[column] = df_copy[column].fillna(mode_value)
-        logger.info(f"Imputed '{column}' with mode value: {mode_value}")
-        return df_copy
+            if cols_present:
+                imputed_data = self.fitted_imputers['mice'].transform(
+                    df_copy[cols_present])
+                df_imputed_mice = pd.DataFrame(
+                    imputed_data, columns=cols_present, index=df_copy.index)
 
-    def _knn_imputation(self, df, column, n_neighbors=5):
-        df_copy = df.copy()
+                for col in cols_present:
+                    df_copy[col] = df_imputed_mice[col]
 
-        numeric_columns = df_copy.select_dtypes(
-            include=['float64', 'int64']).columns.tolist()
+                logger.info(
+                    "Global MICE transformation applied.")
+                df_copy[cols_present] = df_copy[cols_present].round()
+                mice_applied = True
 
-        if column not in numeric_columns:
+        knn_applied = False
+        if 'knn' in self.fitted_imputers:
+            logger.info("KNN transformation...")
+            cols_present = [
+                col for col in self.numeric_cols_knn if col in df_copy.columns]
+
+            if cols_present:
+                if df_copy[cols_present].isna().sum().sum() > 0:
+                    imputed_data = self.fitted_imputers['knn'].transform(
+                        df_copy[cols_present])
+                    df_imputed_knn = pd.DataFrame(
+                        imputed_data, columns=cols_present, index=df_copy.index)
+                    for col in cols_present:
+                        df_copy[col] = df_imputed_knn[col]
+                    logger.info("KNN transformation applied.")
+                    knn_applied = True
+                else:
+                    logger.info(
+                        "No missing values found in KNN imputation method columns. Skipping.")
+
+        for col in df_copy.columns:
+            if df_copy[col].isna().sum() > 0:
+                strategy = self.config['columns'].get(
+                    col, {}).get('imputation', 'mean')
+
+                if strategy == 'mice' and mice_applied and col in self.numeric_cols_mice and df_copy[col].isna().sum() == 0:
+                    continue
+                if strategy == 'knn' and knn_applied and col in self.numeric_cols_knn and df_copy[col].isna().sum() == 0:
+                    continue
+
+                if col in self.fitted_params:
+                    fill_value = self.fitted_params[col]
+                    df_copy[col] = df_copy[col].fillna(fill_value)
+                    logger.info(
+                        f"Imputed remaining nan values in '{col}' feature with calculated value: {fill_value}")
+                elif f"{col}_knn_fallback" in self.fitted_params:
+                    fill_value = self.fitted_params[f"{col}_knn_fallback"]
+                    df_copy[col] = df_copy[col].fillna(fill_value)
+                    logger.info(
+                        f"Imputed remaining nan values in '{col}'  feature with KNN fallback value: {fill_value}")
+
+        remaining_nans = df_copy.isna().sum().sum()
+        if remaining_nans > 0:
             logger.warning(
-                f"KNN imputation not suitable for non-numeric float64 or int64 column '{column}'. Using mode instead."
-            )
-            return self._mode_imputation(df_copy, column)
+                f"Remained nan values: {remaining_nans} after incomplete imputation.")
+        else:
+            logger.info("Every feature was imputed succesfully.")
 
-        imputer = KNNImputer(n_neighbors=n_neighbors)
-        df_numeric = df_copy[numeric_columns]
-        imputed_data = imputer.fit_transform(df_numeric)
-
-        column_idx = numeric_columns.index(column)
-        df_copy[column] = imputed_data[:, column_idx]
-
-        logger.info(
-            f"Imputed '{column}' using KNN imputation with {n_neighbors} neighbors"
-        )
-
-        return df_copy
-    
-    def _mice_imputation_global(self, df, max_iter=10):
-        """Perform global MICE imputation on the entire DataFrame ."""
-        df_copy = df.copy()
-        logger.info("Applying global MICE (Iterative Imputer) to all numerical columns with missing values...")
-        imputer = IterativeImputer(max_iter=max_iter, random_state=0)
-        imputed_data = imputer.fit_transform(df_copy)
-        df_imputed = pd.DataFrame(imputed_data, columns=df.columns, index=df.index)
-        logger.info("Global MICE imputing completed. Rounding all values to nearest integers...")
-        df_imputed = df_imputed.round()
-
-        # Clip categorical columns to allowed ranges
-        for col in df_imputed.columns:
+        for col in df_copy.columns:
             col_config = self.config['columns'].get(col, {})
             col_type = col_config.get('type')
 
@@ -128,14 +162,15 @@ class Imputer:
                 mapping = col_config.get('mapping', {})
                 if mapping:
                     allowed_vals = list(mapping.keys())
-                    min_val, max_val = min(allowed_vals), max(allowed_vals)
-                    df_imputed[col] = df_imputed[col].clip(lower=min_val, upper=max_val)
-                    logger.info(f"Clipped values in categorical column '{col}' to range [{min_val}, {max_val}]")
+                    if allowed_vals:
+                        min_val, max_val = min(allowed_vals), max(allowed_vals)
+                        if pd.api.types.is_numeric_dtype(df_copy[col]):
+                            df_copy[col] = df_copy[col].clip(
+                                lower=min_val, upper=max_val).round()
+                            logger.info(
+                                f"Clipped values in categorical column '{col}' to range [{min_val}, {max_val}] and rounded.")
+                        else:
+                            logger.warning(
+                                f"Cannot clip categorical feature '{col}'.")
 
-        return df_imputed
-    
-    
-
-
-
-
+        return df_copy
