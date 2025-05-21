@@ -32,6 +32,3 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
-
-# Plots directory
-plots/
